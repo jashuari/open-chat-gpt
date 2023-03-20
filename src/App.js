@@ -149,7 +149,7 @@ const ChatGPT = () => {
         {
           model: 'gpt-3.5-turbo',
           messages: formattedMessages,
-          max_tokens: 2049,
+          max_tokens: 2000,
         },
         {
           headers: {
