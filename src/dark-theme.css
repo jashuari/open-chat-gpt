@@ -1,0 +1,31 @@
+/* Dark theme styles */
+:root {
+    --bg-color: #333;
+    --text-color: #f0f0f0;
+    --input-bg-color: #555;
+    --input-text-color: #f0f0f0;
+    --message-bg-user: #4a4a4a;
+    --message-bg-ai: #4a4a4a;
+  }
+  
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+  }
+  
+  input,
+  button {
+    background-color: var(--input-bg-color);
+    color: var(--input-text-color);
+  }
+  
+  .message.user .message-content,
+  .message.ai .message-content {
+    background-color: var(--message-bg-user);
+    color: var(--text-color);
+  }
+  
+  .message.ai .message-content {
+    background-color: var(--message-bg-ai);
+  }
+  
