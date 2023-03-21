@@ -85,6 +85,7 @@ const ChatGPT = () => {
 
   const { theme, toggleTheme, buttonText } = useTheme();
   const chatBoxRef = useRef(null);
+  const [userMessageCount, setUserMessageCount] = useState(0);
 
 
   useEffect(() => {
@@ -136,15 +137,25 @@ const ChatGPT = () => {
       fetchAIResponse();
       setShouldFetchAIResponse(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldFetchAIResponse]);
 
   const sendMessage = (e) => {
     if (e) e.preventDefault();
     if (!userInput.trim()) return;
-
-    if (messages.length === 0) {
+    if (userMessageCount === 0) {
       setConversationName(userInput);
+      setConversations((prevConversations) => {
+        return prevConversations.map((conv) => {
+          if (conv.id === currentConversation) {
+            return { ...conv, title: userInput };
+          } else {
+            return conv;
+          }
+        });
+      });
     }
+    
 
     const userMessage = { role: 'user', content: userInput };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
@@ -152,6 +163,8 @@ const ChatGPT = () => {
 
     updateMessages(userMessage, currentConversation);
     setShouldFetchAIResponse(true); // Add this line
+
+    setUserMessageCount(userMessageCount + 1);
   };
 
   const fetchAIResponse = async () => {
