@@ -15,6 +15,7 @@ const ChatGPT = () => {
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationName, setConversationName] = useState('');
+  const [shouldFetchAIResponse, setShouldFetchAIResponse] = useState(false);
 
 
   const [messages, setMessages] = useState(() => {
@@ -80,7 +81,7 @@ const ChatGPT = () => {
     const firstConversation = conversations?.[0];
     return firstConversation ? firstConversation.id : null;
   });
-  
+
 
   const { theme, toggleTheme, buttonText } = useTheme();
   const chatBoxRef = useRef(null);
@@ -124,15 +125,23 @@ const ChatGPT = () => {
     localStorage.setItem('savedData', JSON.stringify({ messages: messages, conversations: [...conversations, newConversation] }));
   };
 
-  const switchConversation = (id) => {
+  const switchConversation = async (id) => {
     console.log('id', id)
     setCurrentConversation(id);
   };
 
+
+  useEffect(() => {
+    if (shouldFetchAIResponse) {
+      fetchAIResponse();
+      setShouldFetchAIResponse(false);
+    }
+  }, [shouldFetchAIResponse]);
+
   const sendMessage = (e) => {
     if (e) e.preventDefault();
     if (!userInput.trim()) return;
-    // Update the conversation name if it's the first message
+
     if (messages.length === 0) {
       setConversationName(userInput);
     }
@@ -140,47 +149,46 @@ const ChatGPT = () => {
     const userMessage = { role: 'user', content: userInput };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setUserInput('');
+
+    updateMessages(userMessage, currentConversation);
+    setShouldFetchAIResponse(true); // Add this line
   };
 
-  useEffect(() => {
-    const fetchAIResponse = async () => {
-      if (messages.length === 0 || messages[messages.length - 1].role !== 'user') {
-        return;
-      }
+  const fetchAIResponse = async () => {
+    if (messages.length === 0 || messages[messages.length - 1].role !== 'user') {
+      return;
+    }
 
-      setIsLoading(true);
-      const formattedMessages = messages.map((message) => {
-        return { role: message.role, content: message.content };
-      });
-      console.log('formattedMessages', formattedMessages);
+    setIsLoading(true);
+    const formattedMessages = messages.map((message) => {
+      return { role: message.role, content: message.content };
+    });
 
-      const response = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
-        {
-          model: 'gpt-3.5-turbo',
-          messages: formattedMessages,
-          max_tokens: 2000,
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-3.5-turbo',
+        messages: formattedMessages,
+        max_tokens: 2000,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${openaiApiKey}`,
         },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${openaiApiKey}`,
-          },
-        }
-      );
+      }
+    );
 
-      const aiMessage = {
-        role: 'assistant',
-        content: response.data.choices[0].message.content,
-      };
-      console.log('aiMessage', aiMessage)
-      setMessages((prevMessages) => [...prevMessages, aiMessage]);
-      setIsLoading(false);
-      // Save the chat history to localStorage
-      updateMessages(aiMessage);
-      localStorage.setItem('savedData', JSON.stringify([...messages, aiMessage]));
-    }; fetchAIResponse();
-  }, [messages, updateMessages]);
+    const aiMessage = {
+      role: 'assistant',
+      content: response.data.choices[0].message.content,
+    };
+    setMessages((prevMessages) => [...prevMessages, aiMessage]);
+    setIsLoading(false);
+
+    updateMessages(aiMessage, currentConversation);
+  };
+
 
   const handleKeyDown = (e) => {
 
@@ -297,17 +305,17 @@ const ChatGPT = () => {
   }, []);
 
   const deleteChat = () => {
-  const firstConversation = conversations[0];
-  const resetFirstConversation = {
-    ...firstConversation,
-    messages: [{ role: 'assistant', content: 'Hello, how can I help you today?' }],
-  };
+    const firstConversation = conversations[0];
+    const resetFirstConversation = {
+      ...firstConversation,
+      messages: [{ role: 'assistant', content: 'Hello, how can I help you today?' }],
+    };
 
-  setMessages([{ role: 'assistant', content: 'Hello, how can I help you today?' }]);
-  setConversations([resetFirstConversation]);
-  setCurrentConversation(resetFirstConversation.id);
-  localStorage.setItem('savedData', JSON.stringify({ messages: messages, conversations: [resetFirstConversation] }));
-};
+    setMessages([{ role: 'assistant', content: 'Hello, how can I help you today?' }]);
+    setConversations([resetFirstConversation]);
+    setCurrentConversation(resetFirstConversation.id);
+    localStorage.setItem('savedData', JSON.stringify({ messages: messages, conversations: [resetFirstConversation] }));
+  };
 
 
   const Conversation = React.memo(({ conversation, isActive, switchConversation, deleteConversation }) => {
