@@ -27,29 +27,35 @@ const ChatGPT = () => {
     }
     return [{ role: 'assistant', content: 'Hello, how can I help you today?' }];
   });
+  
 
-  const updateMessages = useCallback((newMessage) => {
-    setConversations((prevConversations) => {
-      const updatedConversations = prevConversations.map((conv) => {
-        if (conv.id === currentConversation) {
-          if (newMessage.role === 'user' && !conv.title) {
-            return { ...conv, messages: [...conv.messages, newMessage], title: newMessage.content };
+  const updateMessages = useCallback(
+    (newMessage, currentConv) => {
+      setConversations((prevConversations) => {
+        const updatedConversations = prevConversations.map((conv) => {
+          if (conv.id === currentConv) {
+            const updatedMessages = [...conv.messages, newMessage];
+            return { ...conv, messages: updatedMessages };
           } else {
-            return { ...conv, messages: [...conv.messages, newMessage] };
+            return conv;
           }
-        } else {
-          return conv;
-        }
+        });
+  
+        const currentConvObj = updatedConversations.find(
+          (conv) => conv.id === currentConv
+        );
+        const savedData = {
+          messages: currentConvObj ? currentConvObj.messages : [],
+          conversations: updatedConversations,
+        };
+        localStorage.setItem("savedData", JSON.stringify(savedData));
+        return updatedConversations;
       });
+    },
+    []
+  );
+  
 
-      const savedData = {
-        messages: messages,
-        conversations: updatedConversations,
-      };
-      localStorage.setItem('savedData', JSON.stringify(savedData));
-      return updatedConversations;
-    });
-  }, []);
 
   const [conversations, setConversations] = useState(() => {
     const savedData = localStorage.getItem('savedData');
@@ -286,6 +292,13 @@ const ChatGPT = () => {
     return formattedContent;
   }, []);
 
+  const deleteChat = () => {
+    setMessages([{ role: 'assistant', content: 'Hello, how can I help you today?' }]);
+    setConversations([]);
+    setCurrentConversation(null);
+    localStorage.removeItem('savedData');
+  };  
+
   const Conversation = React.memo(({ conversation, isActive, switchConversation, deleteConversation }) => {
     const conversationTitle = conversation.title || `Conversation ${conversation.id}`;
 
@@ -309,6 +322,9 @@ const ChatGPT = () => {
       <div className="reset-chat-container">
         <button className="reset-chat-button" onClick={resetChat}>
           + New Chat
+        </button>
+        <button className="reset-chat-button" onClick={deleteChat}>
+          Delete All Conversations
         </button>
         <div className="saved-conversations">
           {conversations.map((conversation) => (
