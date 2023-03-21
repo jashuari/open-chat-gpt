@@ -123,6 +123,7 @@ const ChatGPT = () => {
     };
     setConversations([...conversations, newConversation]);
     setCurrentConversation(newId);
+    setUserMessageCount(0);
     localStorage.setItem('savedData', JSON.stringify({ messages: messages, conversations: [...conversations, newConversation] }));
   };
 
