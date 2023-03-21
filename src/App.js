@@ -74,10 +74,14 @@ const ChatGPT = () => {
     const savedData = localStorage.getItem("savedData");
     if (savedData) {
       const parsedData = JSON.parse(savedData);
-      return parsedData.conversations[0]?.id || null;
+      const firstConversation = parsedData.conversations?.[0];
+      return firstConversation ? firstConversation.id : null;
     }
-    return conversations[0]?.id || null;
+    const firstConversation = conversations?.[0];
+    return firstConversation ? firstConversation.id : null;
   });
+  
+
   const { theme, toggleTheme, buttonText } = useTheme();
   const chatBoxRef = useRef(null);
 
