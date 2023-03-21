@@ -143,8 +143,13 @@ const ChatGPT = () => {
   const sendMessage = (e) => {
     if (e) e.preventDefault();
     if (!userInput.trim()) return;
+    console.log('userMessageCount',userMessageCount)
+
     if (userMessageCount === 0) {
+      console.log('userMessageCount',userMessageCount)
+
       setConversationName(userInput);
+
       setConversations((prevConversations) => {
         return prevConversations.map((conv) => {
           if (conv.id === currentConversation) {
@@ -154,6 +159,8 @@ const ChatGPT = () => {
           }
         });
       });
+      console.log('conversationName',conversationName)
+
     }
     
 
