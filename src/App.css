@@ -371,3 +371,9 @@ button[type='submit']:hover {
   font-size: 14px;
   font-weight: bold;
 }
+
+.reset-chat-button.disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}

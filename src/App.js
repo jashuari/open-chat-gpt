@@ -16,7 +16,7 @@ const ChatGPT = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [conversationName, setConversationName] = useState('');
 
-  
+
   const [messages, setMessages] = useState(() => {
     const savedData = localStorage.getItem('savedData');
     if (savedData) {
@@ -27,7 +27,7 @@ const ChatGPT = () => {
     }
     return [{ role: 'assistant', content: 'Hello, how can I help you today?' }];
   });
-  
+
 
   const updateMessages = useCallback(
     (newMessage, currentConv) => {
@@ -40,7 +40,7 @@ const ChatGPT = () => {
             return conv;
           }
         });
-  
+
         const currentConvObj = updatedConversations.find(
           (conv) => conv.id === currentConv
         );
@@ -54,30 +54,30 @@ const ChatGPT = () => {
     },
     []
   );
-  
-
 
   const [conversations, setConversations] = useState(() => {
     const savedData = localStorage.getItem('savedData');
     if (savedData) {
       const parsedData = JSON.parse(savedData);
-      if (parsedData.conversations.length === 0) {
-        const newConversation = {
-          id: 1,
-          messages: [{ role: 'assistant', content: 'Hello, how can I help you today?' }],
-          title: '',
-        };
-        localStorage.setItem('savedData', JSON.stringify({ ...parsedData, conversations: [newConversation] }));
-        return [newConversation];
-      }
       return parsedData.conversations || [];
     }
-    return [];
+    const newConversation = {
+      id: Date.now(), // use a timestamp as the conversation ID
+      messages: [{ role: 'assistant', content: 'Hello, how can I help you today?' }],
+      title: '',
+    };
+    localStorage.setItem('savedData', JSON.stringify({ messages: [], conversations: [newConversation] }));
+    return [newConversation];
   });
 
-
-  const [currentConversation, setCurrentConversation] = useState(1);
-
+  const [currentConversation, setCurrentConversation] = useState(() => {
+    const savedData = localStorage.getItem("savedData");
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      return parsedData.conversations[0]?.id || null;
+    }
+    return conversations[0]?.id || null;
+  });
   const { theme, toggleTheme, buttonText } = useTheme();
   const chatBoxRef = useRef(null);
 
@@ -165,18 +165,18 @@ const ChatGPT = () => {
         }
       );
 
-    const aiMessage = {
-      role: 'assistant',
-      content: response.data.choices[0].message.content,
-    };
-    console.log('aiMessage', aiMessage)
-    setMessages((prevMessages) => [...prevMessages, aiMessage]);
-    setIsLoading(false);
-    // Save the chat history to localStorage
-    updateMessages(aiMessage);
-    localStorage.setItem('savedData', JSON.stringify([...messages, aiMessage]));
-  };fetchAIResponse();
-}, [messages,updateMessages]);
+      const aiMessage = {
+        role: 'assistant',
+        content: response.data.choices[0].message.content,
+      };
+      console.log('aiMessage', aiMessage)
+      setMessages((prevMessages) => [...prevMessages, aiMessage]);
+      setIsLoading(false);
+      // Save the chat history to localStorage
+      updateMessages(aiMessage);
+      localStorage.setItem('savedData', JSON.stringify([...messages, aiMessage]));
+    }; fetchAIResponse();
+  }, [messages, updateMessages]);
 
   const handleKeyDown = (e) => {
 
@@ -280,7 +280,7 @@ const ChatGPT = () => {
       formattedContent = formattedContent.replace(match[0], codeBlock);
     }
     if (formattedContent) {
-     // formattedContent = formattedContent.replace(colonRegex, (match) => `${match}<br/>`);
+      // formattedContent = formattedContent.replace(colonRegex, (match) => `${match}<br/>`);
       formattedContent = formattedContent.replace(numbersRegex, (match) => `<br/>${match}`);
       formattedContent = formattedContent.replace(numberColon, (match) => `<br/>${match}`);
     }
@@ -293,11 +293,18 @@ const ChatGPT = () => {
   }, []);
 
   const deleteChat = () => {
-    setMessages([{ role: 'assistant', content: 'Hello, how can I help you today?' }]);
-    setConversations([]);
-    setCurrentConversation(null);
-    localStorage.removeItem('savedData');
-  };  
+  const firstConversation = conversations[0];
+  const resetFirstConversation = {
+    ...firstConversation,
+    messages: [{ role: 'assistant', content: 'Hello, how can I help you today?' }],
+  };
+
+  setMessages([{ role: 'assistant', content: 'Hello, how can I help you today?' }]);
+  setConversations([resetFirstConversation]);
+  setCurrentConversation(resetFirstConversation.id);
+  localStorage.setItem('savedData', JSON.stringify({ messages: messages, conversations: [resetFirstConversation] }));
+};
+
 
   const Conversation = React.memo(({ conversation, isActive, switchConversation, deleteConversation }) => {
     const conversationTitle = conversation.title || `Conversation ${conversation.id}`;
@@ -323,7 +330,9 @@ const ChatGPT = () => {
         <button className="reset-chat-button" onClick={resetChat}>
           + New Chat
         </button>
-        <button className="reset-chat-button" onClick={deleteChat}>
+        <button className={`reset-chat-button${conversations.length <= 1 ? " disabled" : ""}`}
+          onClick={deleteChat}
+          disabled={conversations.length <= 1}>
           Delete All Conversations
         </button>
         <div className="saved-conversations">
