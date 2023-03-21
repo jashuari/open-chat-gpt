@@ -1,3 +1,19 @@
+## This is a React component named ChatGPT. It's a chat application that communicates with the GPT-3.5-Turbo model from OpenAI using the OpenAI API. Here's an overview of the component:
+
+Imports required dependencies, including React hooks, axios for API calls, CSS files, avatar images, and Prism for code highlighting.
+Defines ChatGPT functional component with the following features:
+Stores user messages and AI assistant messages using the useState hook.
+Stores conversation data in the localStorage and retrieves it when the component is rendered.
+Utilizes the useTheme hook for managing theme switching.
+Handles sending a user message and obtaining an AI response using axios.
+Parses the AI response to highlight code and format content.
+Implements a typing indicator to display when the AI is generating a response.
+Supports multiple conversations, switching between conversations, and deleting conversations.
+Provides a chat reset and delete all conversations feature.
+Handles user input, including sending messages with 'Enter' and adjusting the textarea size.
+Implements copy-to-clipboard functionality for code blocks in the chat.
+At a high level, the component renders a chat interface where users can type their messages and receive responses from the GPT-3.5-Turbo model. The chat history is stored in the local storage, and the component supports switching between different conversations. Users can also change the theme of the application.
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
