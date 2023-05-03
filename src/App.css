@@ -1,376 +1,394 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import axios from 'axios';
-import './App.css';
-import './TypingIndicator.css';
-import userAvatar from './batman.png';
-import aiAvatar from './giru.png';
-import { useTheme } from './ThemeContext';
-import Prism from 'prismjs';
-import 'prismjs/themes/prism.css'; // Choose a theme from prismjs/themes
-import 'prismjs/components/prism-typescript'; // Load the TypeScript language support
+/* Add or modify these classes in your App.css file */
+:root,
+html.light body,
+html.dark body {
+  background: red;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  height: 100vh;
+  margin: 0;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
 
-const openaiApiKey = process.env.REACT_APP_OPENAI_API_KEY;
-
-const ChatGPT = () => {
-  const [userInput, setUserInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [conversationName, setConversationName] = useState('');
-  const [linkedinUrl] = useState("https://www.linkedin.com/in/arijanitjashari");
-
-  
-  const [messages, setMessages] = useState(() => {
-    const savedData = localStorage.getItem('savedData');
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      return parsedData.messages || [
-        { role: 'assistant', content: 'Hello, how can I help you today?' },
-      ];
-    }
-    return [{ role: 'assistant', content: 'Hello, how can I help you today?' }];
-  });
-
-  const updateMessages = useCallback((newMessage) => {
-    setConversations((prevConversations) => {
-      const updatedConversations = prevConversations.map((conv) => {
-        if (conv.id === currentConversation) {
-          if (newMessage.role === 'user' && !conv.title) {
-            return { ...conv, messages: [...conv.messages, newMessage], title: newMessage.content };
-          } else {
-            return { ...conv, messages: [...conv.messages, newMessage] };
-          }
-        } else {
-          return conv;
-        }
-      });
-
-      const savedData = {
-        messages: messages,
-        conversations: updatedConversations,
-      };
-      localStorage.setItem('savedData', JSON.stringify(savedData));
-      return updatedConversations;
-    });
-  }, []);
-
-  const [conversations, setConversations] = useState(() => {
-    const savedData = localStorage.getItem('savedData');
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      if (parsedData.conversations.length === 0) {
-        const newConversation = {
-          id: 1,
-          messages: [{ role: 'assistant', content: 'Hello, how can I help you today?' }],
-          title: '',
-        };
-        localStorage.setItem('savedData', JSON.stringify({ ...parsedData, conversations: [newConversation] }));
-        return [newConversation];
-      }
-      return parsedData.conversations || [];
-    }
-    return [];
-  });
+:root,
+html.light #root,
+html.dark #root {
+  background: red;
+  background: var(--bg-color);
+  background-color: var(--bg-color);
+  height: 100vh;
+  transition: background-color 0.2s ease;
+}
 
 
-  const [currentConversation, setCurrentConversation] = useState(1);
+h1 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin-bottom: 20px;
+  color: #333;
+  background-color: inherit;
 
-  const { theme, toggleTheme, buttonText } = useTheme();
-  const chatBoxRef = useRef(null);
+}
 
+.App {
+  font-family: 'Roboto', sans-serif;
+  min-height: 100vh;
+  background-color: var(--bg-color);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  font-size: calc(10px + 2vmin);
+  padding-bottom: 20px;
+}
 
-  useEffect(() => {
-    if (chatBoxRef.current) {
-      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
-    }
-  }, [messages, isLoading]);
+.chat-container {
+  display: flex;
+  background-color: inherit;
+  flex-direction: column;
+  justify-content: space-between;
+  position: absolute;
+  top: 0%;
+  left: 56%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 88%;
+}
 
-  const currentConversationMessages = useMemo(() => {
-    const currentConv = conversations.find((conv) => conv.id === currentConversation);
-    return currentConv ? currentConv.messages : [];
-  }, [currentConversation, conversations]);
+.chat-box {
+  background-color: inherit;
+  overflow-y: auto;
+  flex-grow: 1;
+  max-height: calc(100vh - 150px);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
 
-  useEffect(() => {
-    setMessages(currentConversationMessages);
-  }, [currentConversationMessages]);
-
-  const deleteConversation = (id) => {
-    const confirmation = window.confirm('Are you sure you want to delete this conversation?');
-    if (confirmation) {
-      const updatedConversations = conversations.filter((conversation) => conversation.id !== id);
-      if (currentConversation === id) {
-        setCurrentConversation(updatedConversations[0]?.id || null);
-      }
-      setConversations(updatedConversations);
-      localStorage.setItem('savedData', JSON.stringify({ messages: messages, conversations: updatedConversations }));
-    }
-  };
-
-  const resetChat = () => {
-    const newId = conversations.length > 0 ? conversations[conversations.length - 1].id + 1 : 1;
-    const newConversation = {
-      id: newId,
-      messages: [{ role: 'assistant', content: 'Hello, how can I help you today?' }],
-    };
-    setConversations([...conversations, newConversation]);
-    setCurrentConversation(newId);
-    localStorage.setItem('savedData', JSON.stringify({ messages: messages, conversations: [...conversations, newConversation] }));
-  };
-
-  const switchConversation = (id) => {
-    console.log('id', id)
-    setCurrentConversation(id);
-  };
-
-  const sendMessage = (e) => {
-    if (e) e.preventDefault();
-    if (!userInput.trim()) return;
-    // Update the conversation name if it's the first message
-    if (messages.length === 0) {
-      setConversationName(userInput);
-    }
-
-    const userMessage = { role: 'user', content: userInput };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
-    setUserInput('');
-  };
-
-  useEffect(() => {
-    const fetchAIResponse = async () => {
-      if (messages.length === 0 || messages[messages.length - 1].role !== 'user') {
-        return;
-      }
-
-      setIsLoading(true);
-      const formattedMessages = messages.map((message) => {
-        return { role: message.role, content: message.content };
-      });
-      console.log('formattedMessages', formattedMessages);
-
-      const response = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
-        {
-          model: 'gpt-3.5-turbo',
-          messages: formattedMessages,
-          max_tokens: 2049,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${openaiApiKey}`,
-          },
-        }
-      );
-
-    const aiMessage = {
-      role: 'assistant',
-      content: response.data.choices[0].message.content,
-    };
-    console.log('aiMessage', aiMessage)
-    setMessages((prevMessages) => [...prevMessages, aiMessage]);
-    setIsLoading(false);
-    // Save the chat history to localStorage
-    updateMessages(aiMessage);
-    localStorage.setItem('savedData', JSON.stringify([...messages, aiMessage]));
-  };fetchAIResponse();
-}, [messages,updateMessages]);
-
-  const handleKeyDown = (e) => {
-
-    if (e.key === 'Enter') {
-      if (e.shiftKey) {
-        // Adjusts the number of rows of the textarea when Shift + Enter is pressed
-        e.target.rows += 1;
-      } else {
-        e.preventDefault(); // Prevents adding a new line
-        if (!isLoading) {
-          sendMessage(e); // Sends the message when Enter is pressed only if isLoading is false
-        }
-      }
-    } else if (e.key === 'Backspace') {
-      // Get the caret position within the textarea
-      const caretPosition = e.target.selectionStart;
-      const lines = e.target.value.split('\n');
-      const currentLineIndex = e.target.value.substr(0, caretPosition).split('\n').length - 1;
-
-      if (currentLineIndex >= 0 && lines[currentLineIndex] === '' && e.target.rows > 1) {
-        // Reduces the number of rows of the textarea when Backspace is pressed and the current line is empty
-        e.target.rows -= 1;
-        // Remove the current empty line
-        lines.splice(currentLineIndex, 1);
-        e.target.value = lines.join('\n');
-        // Set the caret position to the end of the previous line
-        const newCaretPosition = e.target.value.split('\n').slice(0, currentLineIndex).join('\n').length;
-        e.target.setSelectionRange(newCaretPosition, newCaretPosition);
-        e.preventDefault();
-      }
-    }
-  };
-
-  function copyToClipboard(element) {
-    const textarea = document.createElement('textarea');
-    textarea.textContent = element.textContent;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
-  }
+.chat-input-container {
+  background-color: inherit;
+  padding: 1rem;
+  position: absolute;
+  bottom: 0;
+  left: 103px;
+  right: 0;
+}
 
 
-  const TypingIndicator = () => {
-    return (
-      <div className="typing-indicator">
-        <div className="typing-indicator-dot"></div>
-        <div className="typing-indicator-dot"></div>
-        <div className="typing-indicator-dot"></div>
-      </div>
-    );
-  };
 
-  const parseMessage = useCallback((content) => {
-    //const codeRegex = /```([\s\S]*?)```/g;
-    const commentRegex = /(\/\/.*?)\./g;
-    //const colonRegex = /:/g;
-    const numbersRegex = /(\d+\.)/g;
-    const numberColon = /(\d+[:])/g;
-    const codeRegex = /```([\s\S]*?)\n([\s\S]*?)```/g;
+.light {
+  --bg-color: #ffffff;
+  --text-color: #333333;
+  --input-bg-color: #ffffff;
+  --input-text-color: #333333;
+  --message-bg-user: #f0f0f0;
+  --message-bg-ai: #ffffff;
+}
 
-    let formattedContent = content;
-    let match;
-
-    while ((match = codeRegex.exec(content)) !== null) {
-      const detectedLanguage = Prism.languages[match[1]];
-      const originalCode = match[2];
-      const formattedCode = originalCode// Format the code before passing it to Prism
-
-      let highlightedCode = "";
-
-      if (detectedLanguage) {
-        highlightedCode = Prism.highlight(formattedCode, detectedLanguage, match[1]);
-      } else {
-        highlightedCode = Prism.highlight(formattedCode, Prism.languages.typescript, "typescript");
-      }
-
-      const formattedHighlightedCode = highlightedCode;
-
-      const languageLabel = `<span style="font-weight: bold; color: red;">${match[1]}</span>`
-      const uniqueId = `code-${Date.now()}`;
-      const codeBlock = `
-      <div class="code-container">
-        <pre class="code" id="${uniqueId}">
-          <code class="language">${languageLabel}<br/>${formattedHighlightedCode}<br /></code>
-        </pre>
-        <button
-          onClick="(function() {
-            const codeElement = document.getElementById('${uniqueId}');
-            ${copyToClipboard.toString().replace(/\$/g, '\\$')}
-            copyToClipboard(codeElement);
-          })()"
-          class="copy-button"
-        >
-          Copy Code
-        </button>
-      </div>
-      <br />
-    `;
-
-      formattedContent = formattedContent.replace(match[0], codeBlock);
-    }
-    if (formattedContent) {
-     // formattedContent = formattedContent.replace(colonRegex, (match) => `${match}<br/>`);
-      formattedContent = formattedContent.replace(numbersRegex, (match) => `<br/>${match}`);
-      formattedContent = formattedContent.replace(numberColon, (match) => `<br/>${match}`);
-    }
-    while ((match = commentRegex.exec(formattedContent)) !== null) {
-      const comment = `<span class="comment">${match[0]}.</span>`;
-      formattedContent = formattedContent.replace(match[0], comment);
-    }
-
-    return formattedContent;
-  }, []);
-
-  const Conversation = React.memo(({ conversation, isActive, switchConversation, deleteConversation }) => {
-    const conversationTitle = conversation.title || `Conversation ${conversation.id}`;
-
-    return (
-      <div
-        className={`conversation ${isActive ? 'active' : ''}`}
-        onClick={() => switchConversation(conversation.id)}
-      >
-        {conversationTitle}
-        {conversations.length > 1 && (
-          <button className="delete-conversation" onClick={(e) => { e.stopPropagation(); deleteConversation(conversation.id); }}>Delete</button>
-        )}
-      </div>
-    );
-  });
-
-  return (
-
-    <div className={`App ${theme}`}>
-      <h1 className="logo">Public GPT-3.5-Turbo</h1>
-      <div className="reset-chat-container">
-        <button className="reset-chat-button" onClick={resetChat}>
-          + New Chat
-        </button>
-        <div className="saved-conversations">
-          {conversations.map((conversation) => (
-            <Conversation
-              key={conversation.id}
-              conversation={conversation}
-              isActive={conversation.id === currentConversation}
-              switchConversation={switchConversation}
-              deleteConversation={deleteConversation}
-              conversationName={conversationName}
-            />
-          ))}
-        </div>
-      </div>
-      <button onClick={toggleTheme} className="toggle-theme">
-        {buttonText}
-      </button>
-      <button  className="toggle-theme1"
-          onClick={() => window.open(linkedinUrl, "_blank")}
-        >
-          Created with ❤️ by
-        </button>
-      <div className="chat-container">
-
-        <div ref={chatBoxRef} className="chat-box">
-          {messages.map((message, index) => (
-            <div key={index} className={`message ${message.role}`}>
-              <img className="avatar" src={message.role === 'user' ? userAvatar : aiAvatar} alt={`${message.role} avatar`} />
-              <div
-                className={`message-content ${message.role}`}
-                dangerouslySetInnerHTML={{ __html: parseMessage(message.content) }}
-              />
-            </div>
-          ))}
-          {isLoading && (
-            <div className="message assistant">
-              <img className="avatar" src={aiAvatar} alt="assistant avatar" />
-              <div className="message-content assistant">
-                <TypingIndicator />
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      <form onSubmit={sendMessage}>
-        <div className="chat-input-container">
-          <textarea
-            type="text"
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message here..."
-            rows={1}
-          />
-          <button type="submit" disabled={isLoading}>Send</button>
-        </div>
-      </form>
-    </div>
-  );
+.dark {
+  --bg-color: #333;
+  --text-color: #f0f0f0;
+  --input-bg-color: #555;
+  --input-text-color: #f0f0f0;
+  --message-bg-user: #4a4a4a;
+  --message-bg-ai: #4a4a4a;
+}
 
 
-};
+.chat-input-container textarea {
+  background-color: var(--input-bg-color);
+  border: 1px solid var(--text-color);
+  border-radius: 5px;
+  color: var(--input-text-color);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  padding: 10px;
+  resize: none;
+  width: 100%;
+}
 
-export default ChatGPT;
+
+.chat-input-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0px auto;
+  max-width: 800px;
+  width: 100%;
+}
+
+.toggle-theme1 {
+  background-color: var(--text-color);
+  border: 1px solid var(--text-color);
+  border-radius: 20px;
+  color: var(--bg-color);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 6px 12px;
+  position: absolute;
+  right: 20px;
+  bottom: 54px;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-theme1:hover {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  border-color: var(--text-color);
+}
+
+
+.toggle-theme {
+  background-color: var(--text-color);
+  border: none;
+  border-radius: 5px;
+  color: var(--bg-color);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 10px 20px;
+  position: absolute;
+  right: 20px;
+  bottom: 13px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+
+.chat-input-container button {
+  background-color: var(--text-color);
+  border: none;
+  border-radius: 5px;
+  color: var(--bg-color);
+  cursor: pointer;
+  font-size: 16px;
+  margin-left: 10px;
+  padding: 10px 20px;
+  transition: background-color 0.2s ease;
+}
+
+
+.message {
+  display: flex;
+  align-items: center;
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 5px;
+  background: lightslategray;
+}
+
+.message.user {
+  flex-direction: row;
+  background: darkslategrey;
+}
+
+.message.ai {
+  background-color: #e0e0e0;
+  /* AI response background color */
+  color: #333;
+  /* AI response text color */
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 8px;
+  max-width: 75%;
+  /* Set a maximum width for the message container */
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin: 0 10px;
+}
+
+.message-content {
+  max-width: 70%;
+  padding: 10px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.message-content.user {
+  background-color: #4caf50;
+  /* User response background color */
+  color: #fff;
+  /* User response text color */
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 8px;
+  max-width: 75%;
+  /* Set a maximum width for the message container */
+  align-self: flex-end;
+  /* Align the user response to the right */
+}
+
+.message-content.assistant {
+  background-color: #f5f5f5;
+  color: #333;
+  background-color: #e0e0e0;
+  /* AI response background color */
+  color: #333;
+  /* AI response text color */
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 8px;
+  max-width: 75%;
+  /* Set a maximum width for the message container */
+}
+
+
+button[type='submit'] {
+  background-color: #6c63ff;
+  border: none;
+  color: white;
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button[type='submit']:hover {
+  background-color: #4c4fec;
+}
+
+.code {
+  background-color: #2b2b2b;
+  padding: 1rem;
+  border-radius: 6px;
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  white-space: pre-wrap;
+  display: inline-block;
+  margin: 0.5rem 0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  color: #a9b7c6;
+  line-height: 1.4;
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid #3c3f41;
+  width: 100%;
+  height: 100%;
+}
+
+.comment {
+  color: #32CD32;
+}
+
+.code-container {
+  display: flex;
+  justify-content: center;
+}
+
+/* TypingIndicator and other existing CSS rules remain unchanged */
+.light {
+  /* ...other light theme variables... */
+  --bg-color: white;
+}
+
+.dark {
+  /* ...other dark theme variables... */
+  --bg-color: black;
+}
+
+.App .token.operator,
+.App .token.entity,
+.App .token.url,
+.App .language-css .token.string,
+.App .style .token.string {
+  /* Your custom CSS properties */
+
+  background: none !important;
+  ;
+  /* Add any other properties you want to change */
+}
+
+.code .language>span.language-label:first-of-type {
+  color: #ff9800;
+  /* Or any color of your choice */
+}
+
+.copy-button {
+  height: 10%;
+  width: 18%;
+  overflow: overlay;
+  margin-top: 8px;
+  margin-left: -17.5%;
+  background-color: #4caf50;
+  border: none;
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 16px;
+  z-index: 1;
+  border-radius: 4px;
+}
+
+.logo {
+  font-family: 'Roboto', sans-serif;
+  font-size: 2.5rem;
+  font-weight: bold;
+  background: linear-gradient(90deg, #ff5f6d, #ffc371);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -moz-background-clip: text;
+  color: transparent;
+  margin-bottom: 1rem;
+  margin-left: 1%;
+}
+
+.reset-chat-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 20px;
+}
+
+.reset-chat-button {
+  background-color: #007bff;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 10px 20px;
+}
+
+.reset-chat-button:hover {
+  background-color: #0056b3;
+}
+
+.saved-conversations {
+  top: 0;
+  left: 150px;
+  margin: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.conversation {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 10px;
+  padding: 5px 10px;
+}
+
+.conversation.active {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.delete-conversation{
+  background-color: #ff5f6d;
+  color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+}
