@@ -8,10 +8,13 @@ import { useTheme } from './ThemeContext';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism.css'; // Choose a theme from prismjs/themes
 import 'prismjs/components/prism-typescript'; // Load the TypeScript language support
+import { inject } from '@vercel/analytics';
 
 const openaiApiKey = process.env.REACT_APP_OPENAI_API_KEY;
 
 const ChatGPT = () => {
+  inject();
+
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationName, setConversationName] = useState('');
